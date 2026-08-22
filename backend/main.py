@@ -1,12 +1,16 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
-from ml_engine import compute_organ_compatibility
+import json
 
-app = FastAPI(title="LifePulse API Engine")
+from database import init_db, get_db, PatientRequest, OrganMatch
+from ml_engine import calculate_compatibility
 
+app = FastAPI(title="LifePulse Emergency & Organ Exchange API")
+
+# Enable CORS for Frontend communication
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,7 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# WebSocket Connection Manager for Live Donor SOS
+# Initialize SQLite database schema
+init_db()
+
+# WebSocket Connection Manager for Real-Time Donor Feeds
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -30,74 +37,127 @@ class ConnectionManager:
 
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except Exception:
-                pass
+            await connection.send_json(message)
 
 manager = ConnectionManager()
 
-# In-Memory Storage
-requests_db = {}
-h2h_transfers = []
-
-class EmergencyRequest(BaseModel):
+# Pydantic Schemas
+class CreatePatientRequest(BaseModel):
     patient_name: str
     age: int
-    need_type: str  # "blood", "platelets", "organ"
+    need_type: str
     blood_group: Optional[str] = None
     organ_type: Optional[str] = None
     hospital_name: str
     doctor_name: str
-    doctor_phone: str
-    prescription_url: str = "prescription_mock.png"
+    doctor_phone: Optional[str] = None
 
-class VerifyRequest(BaseModel):
-    request_id: str
-    hospital_pin: str
+class MatchQuery(BaseModel):
+    organ_type: str
+    blood_group: str
+    donor_age: int
+    max_ischemia_hours: float
+    current_ischemia_hours: float
+    hla_match_ratio: float
 
-@app.post("/api/requests/create")
-async def create_request(data: EmergencyRequest):
-    req_id = f"REQ-{len(requests_db) + 101}"
-    record = {
-        "id": req_id,
-        **data.dict(),
-        "status": "UNVERIFIED_PENDING",
-        "timestamp": datetime.now().strftime("%H:%M:%S")
-    }
-    requests_db[req_id] = record
-    return {"status": "success", "request_id": req_id, "record": record}
+# REST Routes
+@app.get("/api/requests")
+def get_all_requests(db: Session = Depends(get_db)):
+    return db.query(PatientRequest).order_by(PatientRequest.created_at.desc()).all()
 
-@app.post("/api/requests/verify")
-async def verify_request(data: VerifyRequest):
-    if data.request_id not in requests_db:
-        raise HTTPException(status_code=404, detail="Request not found")
+@app.post("/api/requests")
+async def create_request(req: CreatePatientRequest, db: Session = Depends(get_db)):
+    req_count = db.query(PatientRequest).count()
+    new_id = f"REQ-{101 + req_count}"
     
-    if data.hospital_pin != "4026":
-        raise HTTPException(status_code=400, detail="Invalid Hospital Security PIN")
-        
-    record = requests_db[data.request_id]
-    record["status"] = "VERIFIED_EMERGENCY"
-    
-    # Broadcast Real-Time SOS Alert to all connected donors
+    db_req = PatientRequest(
+        id=new_id,
+        patient_name=req.patient_name,
+        age=req.age,
+        need_type=req.need_type,
+        blood_group=req.blood_group,
+        organ_type=req.organ_type,
+        hospital_name=req.hospital_name,
+        doctor_name=req.doctor_name,
+        doctor_phone=req.doctor_phone,
+        status="UNVERIFIED_PENDING"
+    )
+    db.add(db_req)
+    db.commit()
+    db.refresh(db_req)
+
+    # Broadcast new pending request to WebSocket clients
     await manager.broadcast({
-        "event": "NEW_SOS_ALERT",
-        "request": record
+        "type": "NEW_PENDING_REQUEST",
+        "data": {
+            "id": db_req.id,
+            "patient_name": db_req.patient_name,
+            "need_type": db_req.need_type,
+            "hospital_name": db_req.hospital_name,
+            "status": db_req.status
+        }
     })
-    
-    return {"status": "success", "message": "Verified & SOS Broadcasted"}
 
-@app.post("/api/organ/match")
-async def match_organ(donor: dict, recipients: List[dict]):
+    return db_req
+
+@app.put("/api/requests/{req_id}/verify")
+async def verify_request(req_id: str, db: Session = Depends(get_db)):
+    db_req = db.query(PatientRequest).filter(PatientRequest.id == req_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Request ticket not found")
+
+    db_req.status = "VERIFIED_BROADCAST"
+    db.commit()
+
+    # Broadcast emergency alert to donors
+    await manager.broadcast({
+        "type": "EMERGENCY_BROADCAST_ALERT",
+        "data": {
+            "id": db_req.id,
+            "title": f"CRITICAL NEED: {db_req.blood_group or db_req.organ_type}",
+            "patient_name": db_req.patient_name,
+            "hospital_name": db_req.hospital_name,
+            "need_type": db_req.need_type,
+            "blood_group": db_req.blood_group,
+            "organ_type": db_req.organ_type,
+            "status": "VERIFIED_BROADCAST"
+        }
+    })
+
+    return {"status": "success", "data": db_req}
+
+@app.post("/api/h2h/match")
+def run_organ_match(query: MatchQuery):
+    mock_recipients = [
+        {"id": "R-201", "name": "Rohan Sharma", "hospital": "Metro Heart Institute", "distance_km": 12.5},
+        {"id": "R-202", "name": "Priya Patel", "hospital": "City Care Hospital", "distance_km": 42.0},
+        {"id": "R-203", "name": "Amit Kumar", "hospital": "Apex Trauma Center", "distance_km": 88.0}
+    ]
+
     results = []
-    for rec in recipients:
-        res = compute_organ_compatibility(donor, rec)
-        results.append(res)
-    results = sorted(results, key=lambda x: x["match_score"], reverse=True)
-    return {"donor_id": donor.get("donor_id"), "ranked_recipients": results}
+    donor_dict = {
+        "max_ischemia_hours": query.max_ischemia_hours,
+        "current_ischemia_hours": query.current_ischemia_hours,
+        "hla_match_ratio": query.hla_match_ratio
+    }
 
-@app.websocket("/ws/donors")
-async def websocket_donor_endpoint(websocket: WebSocket):
+    for rec in mock_recipients:
+        comp = calculate_compatibility(donor_dict, rec)
+        results.append({
+            "recipient_id": rec["id"],
+            "recipient_name": rec["name"],
+            "hospital": rec["hospital"],
+            "distance_km": rec["distance_km"],
+            **comp
+        })
+
+    # Sort recipients by compatibility score descending
+    results.sort(key=lambda x: x["match_score"], reverse=True)
+    return {"donor_organ": query.organ_type, "ranked_matches": results}
+
+# WebSocket Endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
