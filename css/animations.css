@@ -1,0 +1,342 @@
+/* =========================================================================
+   LIFE PULSE — KEYFRAMES, SIDEBAR & MOTION ANIMATIONS
+   ========================================================================= */
+
+/* Grid Drift Animation */
+@keyframes gridDrift {
+  0% { background-position: 0 0; }
+  100% { background-position: 36px 36px; }
+}
+
+/* Ambient Floating Orbs */
+@keyframes floatSlow {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(25px, -20px) scale(1.05); }
+  100% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* Heartbeat Pulse */
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.18); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.22); }
+  70% { transform: scale(1); }
+}
+
+.animate-heartbeat {
+  animation: heartBeat 1.4s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+  transform-origin: center;
+}
+
+/* Sonar Pulsing Rings */
+.sonar-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sonar-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.5rem;
+  border: 2px solid rgba(239, 68, 68, 0.6);
+  animation: sonarWave 2.8s cubic-bezier(0.1, 0.2, 0.7, 1) infinite;
+  pointer-events: none;
+}
+
+.sonar-ring:nth-child(2) {
+  animation-delay: 0.9s;
+}
+
+.sonar-ring:nth-child(3) {
+  animation-delay: 1.8s;
+}
+
+@keyframes sonarWave {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  80% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* ECG Telemetry Waveform */
+.ecg-line-svg {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: ecgDash 3s linear infinite;
+}
+
+@keyframes ecgDash {
+  0% { stroke-dashoffset: 1000; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* Shimmer Button Effect */
+.shimmer-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: rotate(25deg);
+  animation: shimmerSlide 3.5s infinite;
+}
+
+@keyframes shimmerSlide {
+  0% { left: -60%; }
+  25%, 100% { left: 140%; }
+}
+
+/* Hamburger Icon Animation */
+.hamburger-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hamburger-btn:hover {
+  background: rgba(30, 41, 59, 1);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.hamburger-line {
+  width: 20px;
+  height: 2px;
+  background-color: #f8fafc;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+/* Hamburger Transform to X */
+.hamburger-btn.is-active .line-1 {
+  transform: translateY(7px) rotate(45deg);
+  background-color: #ef4444;
+}
+
+.hamburger-btn.is-active .line-2 {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.hamburger-btn.is-active .line-3 {
+  transform: translateY(-7px) rotate(-45deg);
+  background-color: #ef4444;
+}
+
+/* Sidebar Drawer Slide Animation */
+.sidebar-aside {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+
+@media (max-width: 1023px) {
+  .sidebar-aside {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.8);
+  }
+
+  .sidebar-aside.drawer-open {
+    transform: translateX(0);
+  }
+}
+
+/* Sidebar Backdrop Overlay */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Nav Item Animated Glow & Ripple */
+.nav-tab-btn {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.nav-tab-btn:hover {
+  transform: translateX(4px);
+}
+
+.nav-tab-btn.is-active {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.2) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border-left: 4px solid #ef4444;
+  color: #ffffff;
+  box-shadow: 0 4px 20px -5px rgba(239, 68, 68, 0.3);
+}
+
+.nav-tab-btn.is-active i {
+  color: #ef4444;
+  transform: scale(1.15);
+}
+
+.nav-tab-btn:active {
+  transform: scale(0.97);
+}
+
+/* View Tab Fade & Slide Entrance */
+.view-tab {
+  display: none;
+}
+
+.view-tab.active {
+  display: block;
+  animation: tabViewEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabViewEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Hospital Radar Conic Sweep */
+.hospital-radar-sweep {
+  position: absolute;
+  right: -20px;
+  top: -20px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  pointer-events: none;
+}
+
+.hospital-radar-sweep::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  background: conic-gradient(from 0deg, rgba(239, 68, 68, 0.4) 0deg, transparent 90deg);
+  border-radius: 50%;
+  transform-origin: top left;
+  animation: radarSpin 4s linear infinite;
+}
+
+@keyframes radarSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Emergency Stroboscopic Alert Badge */
+.emergency-strobe {
+  animation: strobeAlert 1.5s ease-in-out infinite;
+}
+
+@keyframes strobeAlert {
+  0%, 100% { background-color: rgba(220, 38, 38, 0.15); border-color: rgba(220, 38, 38, 0.4); color: #f87171; }
+  50% { background-color: rgba(220, 38, 38, 0.35); border-color: rgba(220, 38, 38, 0.8); color: #ffffff; }
+}
+
+/* Donor Aurora Radial Wave */
+.donor-aurora-glow {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.3) 0%, rgba(52, 211, 153, 0) 70%);
+  top: -50px;
+  right: 10%;
+  filter: blur(50px);
+  animation: auroraWave 6s ease-in-out infinite alternate;
+}
+
+@keyframes auroraWave {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-30px, 20px) scale(1.3); opacity: 0.9; }
+}
+
+/* Donor Ring Pulse */
+.donor-life-ring {
+  position: relative;
+}
+
+.donor-life-ring::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 1.5rem;
+  border: 2px solid rgba(16, 185, 129, 0.5);
+  animation: donorRingPulse 2.4s ease-out infinite;
+}
+
+@keyframes donorRingPulse {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* Patient Amber Aura Glow */
+.patient-aura-glow {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0) 70%);
+  bottom: -40px;
+  right: 5%;
+  filter: blur(50px);
+  animation: amberPulse 7s ease-in-out infinite alternate;
+}
+
+@keyframes amberPulse {
+  0% { transform: scale(0.9); opacity: 0.4; }
+  100% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* User GPS Pulse */
+@keyframes userGpsPulse {
+  0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.6); }
+  70% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0); }
+}
+
+.animate-status-pulse {
+  animation: statusPulse 2s infinite ease-in-out;
+}
+
+@keyframes statusPulse {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.9; }
+}
